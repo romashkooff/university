@@ -1,0 +1,259 @@
+#include <iostream>
+#include <fstream>
+#include <iomanip>
+#include <vector>
+#include <string>
+#include <stdexcept>
+
+class Book {
+public:
+    std::string title;
+    std::string author;
+    int year;
+    std::string genre;
+
+    Book(const std::string& title, const std::string& author, int year, const std::string& genre)
+        : title(title), author(author), year(year), genre(genre) {}
+
+    // Simplified JSON serialization for a Book object
+    std::string to_json() const {
+        return "{\"title\":\"" + title + "\",\"author\":\"" + author +
+            "\",\"year\":" + std::to_string(year) + ",\"genre\":\"" + genre + "\"}";
+    }
+};
+
+class ReadingLog {
+private:
+    std::vector<Book> books;
+
+public:
+    void addEntry(const Book& book) {
+        books.push_back(book);
+    }
+
+    void printLog() const {
+        if (books.empty()) {
+            std::cout << "Reading log is empty." << std::endl;
+            return;
+        }
+
+        std::cout << "Reading Log:" << std::endl;
+        for (const auto& book : books) {
+            std::cout << "Title: " << book.title << std::endl;
+            std::cout << "Author: " << book.author << std::endl;
+            std::cout << "Year: " << book.year << std::endl;
+            std::cout << "Genre: " << book.genre << std::endl;
+            std::cout << "------------------------" << std::endl;
+        }
+    }
+
+    std::vector<Book> searchByAuthor(const std::string& author) const {
+        std::vector<Book> result;
+        for (const auto& book : books) {
+            if (book.author == author) {
+                result.push_back(book);
+            }
+        }
+        return result;
+    }
+
+    std::vector<Book> searchByTitle(const std::string& title) const {
+        std::vector<Book> result;
+        for (const auto& book : books) {
+            if (book.title == title) {
+                result.push_back(book);
+            }
+        }
+        return result;
+    }
+
+    void saveToFile(const std::string& filename) const {
+        std::ofstream file(filename);
+        if (!file.is_open()) {
+            throw std::runtime_error("Error opening file for writing.");
+        }
+
+        // Serialize each book to JSON and write to file
+        for (const auto& book : books) {
+            file << book.to_json() << std::endl;
+        }
+
+        file.close();
+        std::cout << "Reading Log saved successfully." << std::endl;
+    }
+
+    void loadFromFile(const std::string& filename) {
+        std::ifstream file(filename);
+        if (!file.is_open()) {
+            throw std::runtime_error("Error opening file for reading.");
+        }
+
+        books.clear();
+        std::string line;
+        while (std::getline(file, line)) {
+            // Deserialize JSON into a Book object and add to the log
+            Book book = jsonToBook(line);
+            books.push_back(book);
+        }
+
+        file.close();
+        std::cout << "Reading Log loaded successfully." << std::endl;
+    }
+
+    void createNewLog() {
+        books.clear();
+        std::cout << "New Reading Log created." << std::endl;
+    }
+
+private:
+    // Helper function to convert JSON string to Book object
+    Book jsonToBook(const std::string& jsonStr) const {
+        // This is a simplified approach and assumes a specific JSON format.
+        // A more robust JSON parsing library should be used in a real-world scenario.
+        size_t titleStart = jsonStr.find("\"title\":\"") + 8;
+        size_t titleEnd = jsonStr.find("\"", titleStart);
+        std::string title = jsonStr.substr(titleStart, titleEnd - titleStart);
+
+        size_t authorStart = jsonStr.find("\"author\":\"") + 9;
+        size_t authorEnd = jsonStr.find("\"", authorStart);
+        std::string author = jsonStr.substr(authorStart, authorEnd - authorStart);
+
+        size_t yearStart = jsonStr.find("\"year\":") + 7;
+        size_t yearEnd = jsonStr.find(",", yearStart);
+        int year = std::stoi(jsonStr.substr(yearStart, yearEnd - yearStart));
+
+        size_t genreStart = jsonStr.find("\"genre\":\"") + 9;
+        size_t genreEnd = jsonStr.find("\"", genreStart);
+        std::string genre = jsonStr.substr(genreStart, genreEnd - genreStart);
+
+        return Book(title, author, year, genre);
+    }
+};
+
+int main() {
+    ReadingLog readingLog;
+
+    while (true) {
+        std::cout << "1. Add Book\n";
+        std::cout << "2. Print Reading Log\n";
+        std::cout << "3. Search by Author\n";
+        std::cout << "4. Search by Title\n";
+        std::cout << "5. Save Reading Log\n";
+        std::cout << "6. Open Reading Log\n";
+        std::cout << "7. Create New Reading Log\n";
+        std::cout << "8. Exit\n";
+        std::cout << "Enter your choice: ";
+
+        int choice;
+        std::cin >> choice;
+
+        switch (choice) {
+        case 1: {
+            std::string title, author, genre;
+            int year;
+
+            std::cout << "Enter Book Title: ";
+            std::cin.ignore(); // Clear newline from buffer
+            std::getline(std::cin, title);
+
+            std::cout << "Enter Author: ";
+            std::getline(std::cin, author);
+
+            std::cout << "Enter Year of Publication: ";
+            std::cin >> year;
+
+            std::cout << "Enter Genre: ";
+            std::cin.ignore(); // Clear newline from buffer
+            std::getline(std::cin, genre);
+
+            Book book(title, author, year, genre);
+            readingLog.addEntry(book);
+            break;
+        }
+        case 2:
+            readingLog.printLog();
+            break;
+        case 3: {
+            std::string author;
+            std::cout << "Enter Author to search: ";
+            std::cin.ignore(); // Clear newline from buffer
+            std::getline(std::cin, author);
+
+            auto result = readingLog.searchByAuthor(author);
+            if (result.empty()) {
+                std::cout << "No books found by the author." << std::endl;
+            }
+            else {
+                for (const auto& book : result) {
+                    std::cout << "Title: " << book.title << std::endl;
+                    std::cout << "Year: " << book.year << std::endl;
+                    std::cout << "Genre: " << book.genre << std::endl;
+                    std::cout << "------------------------" << std::endl;
+                }
+            }
+            break;
+        }
+        case 4: {
+            std::string title;
+            std::cout << "Enter Title to search: ";
+            std::cin.ignore(); // Clear newline from buffer
+            std::getline(std::cin, title);
+
+            auto result = readingLog.searchByTitle(title);
+            if (result.empty()) {
+                std::cout << "No books found with the title." << std::endl;
+            }
+            else {
+                for (const auto& book : result) {
+                    std::cout << "Author: " << book.author << std::endl;
+                    std::cout << "Year: " << book.year << std::endl;
+                    std::cout << "Genre: " << book.genre << std::endl;
+                    std::cout << "------------------------" << std::endl;
+                }
+            }
+            break;
+        }
+        case 5: {
+            std::string filename;
+            std::cout << "Enter filename to save: ";
+            std::cin.ignore(); // Clear newline from buffer
+            std::getline(std::cin, filename);
+
+            try {
+                readingLog.saveToFile(filename);
+                std::cout << "Reading Log saved successfully." << std::endl;
+            }
+            catch (const std::exception& e) {
+                std::cerr << "Error: " << e.what() << std::endl;
+            }
+            break;
+        }
+        case 6: {
+            std::string filename;
+            std::cout << "Enter filename to open: ";
+            std::cin.ignore(); // Clear newline from buffer
+            std::getline(std::cin, filename);
+
+            try {
+                readingLog.loadFromFile(filename);
+                std::cout << "Reading Log loaded successfully." << std::endl;
+            }
+            catch (const std::exception& e) {
+                std::cerr << "Error: " << e.what() << std::endl;
+            }
+            break;
+        }
+        case 7:
+            readingLog.createNewLog();
+            std::cout << "New Reading Log created." << std::endl;
+            break;
+        case 8:
+            std::cout << "Exiting program." << std::endl;
+            return 0;
+        default:
+            std::cout << "Invalid choice. Try again." << std::endl;
+        }
+    }
+
+    return 0;
+}
